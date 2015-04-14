@@ -23,6 +23,8 @@
 # 2015/01/13 - OG - Supress the 'normal' errors in the trace 
 #                   Select the first Java Bridge Server
 # 2015/04/13 - TC - Adds the subprog CHECKDBGINFO to trace Exception thrown by a java method
+# 2015/01/14 - OG - Correction of the validation part of that program (f5). 
+#                   Retreive the first defined bridge in the solution.
 #
 #########################################################################
 
@@ -64,7 +66,7 @@ Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Get the parameters of the JavaBridgeServer
 WHASSERVER = func CIUGETJAVASRV (WHOST,WPORT)
 
 # Get the first JavaBridgeServer defined in the solution.xml file
-WHASSERVER = func CIUFNDJAVASRV("2",WHOST,WPORT)
+WHASSERVER = func CIUFNDJAVASRV("1",WHOST,WPORT)
 
 #if no JavaBridgeServer defined in the solution
 If WHASSERVER =0
