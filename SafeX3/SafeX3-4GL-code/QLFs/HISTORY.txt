@@ -1,0 +1,5 @@
+
+
+20150413-OG
+- create this file
+- new subprog "CHECKDBGINFO" in "QLFCIUUTILS"
