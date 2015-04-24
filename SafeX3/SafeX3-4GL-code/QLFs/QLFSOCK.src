@@ -1,0 +1,141 @@
+#<AdxTL>@(#)7.0.0.0 $Revision$
+#########################################################################
+#
+# QLFSOCK: TRAITEMENT DE QUALIFICATION DE L'INSTRUCTION  Opsock 
+#
+# This 4GL routine contains the sub-program "SRVEXISTS" which test the availability
+# of a server by trying to open a socket
+#
+# 2011/07/21 - OG - Improves comments
+#
+#########################################################################
+
+Local Char WHOST(80)
+WHOST = "dummy1"
+Local Integer WPORT,FINERR
+WPORT =1111
+
+#=================================
+Infbox("A) Test en direct")
+#=================================
+
+Local Integer WEXIST
+WEXIST=-1 :# ni 0, ni 1 !!!
+
+Infbox("DIRECT : Test host=["+[L]WHOST  +"] port=["+num$([L]WPORT )+"]") 
+
+Onerrgo ERREUR
+
+# genere une erreur "27" si host inconnu ou si le port n'est pas ouvert
+Opsock WHOST ,WPORT Using [TSTA]
+
+# test si il y a eu une erreur
+If WEXIST=0 : Goto FINA : Endif
+
+
+# fermeture 
+Opsock WHOST ,0 Using [TSTA]
+
+# un peu d'attente car la fermeture est effective apres 2 a 3 secondes
+Sleep(2)
+WEXIST=1
+Goto FINA
+
+$ERREUR
+WEXIST=0
+Infbox("DIRECT  : Erreur ("+num$(errn)+") : "+errm)
+Resume:# le bloc d'erreur est obligatoirement clos par un "Resume"
+
+
+$FINA
+
+# pour supprimer le debranchement sur erreur
+Onerrgo
+Infbox("DIRECT : resultat : "+num$(WEXIST))
+
+
+#=================================
+Infbox("B) Test via une fonction")
+#=================================
+
+WHOST = "dummy2"
+Local Integer WPORT
+WPORT =2222
+
+
+Infbox("DIRECT : Test via une fonction  host=["+[L]WHOST +"] port=["+num$([L]WPORT )+"]") 
+
+
+
+# la fonction retourne un entier 1 ou 0
+WEXIST = func SRVEXISTS(WHOST ,WPORT)
+
+Infbox("DIRECT : resultat de la fonction : "+num$(WEXIST))
+
+#=================================
+Infbox("C) Test via une fonction")
+#=================================
+
+WHOST = "10.0.0.2"
+
+Local Integer WPORT
+
+WPORT = 17160
+
+
+Infbox("DIRECT : Test via une fonction  host=["+[L]WHOST +"] port=["+num$([L]WPORT )+"]") 
+
+# la fonction retourne un entier 1 ou 0
+WEXIST = func SRVEXISTS(WHOST ,WPORT)
+
+Infbox("DIRECT : resultat de la fonction : "+num$(WEXIST))
+
+
+#=================================
+Infbox("FIN")
+#=================================
+
+End
+
+
+
+
+
+#-------------------------------------------------------------------
+#
+# Fonction de test d'existence d'un serveur 
+#
+#-------------------------------------------------------------------
+Funprog SRVEXISTS(AHOST,APORT)
+  Value Char AHOST()
+  Value Integer APORT
+  Local Integer WOPEN 
+  [L]WOPEN =-1 :# ni 0, ni 1 !!!
+
+  Onerrgo EXISTSERR
+
+  # genere une erreur "27" si host inconnu ou si le port n'est pas ouvert
+  Opsock [L]AHOST,[L]APORT Using [TSTB]
+
+  # test si il y a eu une erreur
+  If [L]WOPEN=0 : Goto EXISTSEND : Endif
+
+  # Fermeture apres une seconde
+  Sleep(1)
+  Opsock [L]AHOST,0 Using [TSTB]
+
+  # un peu d'attente car  la fermeture est effective 2 a 3 secondes apres !!!
+  Sleep(2)
+  [L]WOPEN =1
+  Goto EXISTSEND
+
+$EXISTSERR
+  [L]WOPEN =0
+  Infbox("FONCTION : Erreur ("+num$(errn)+") : ["+errm+"]")
+  Resume:# le bloc d'erreur est obligatoirement clos par un "Resume"
+
+$EXISTSEND
+  # pour supprimer le debranchement sur erreur
+  Onerrgo
+
+End [L]WOPEN

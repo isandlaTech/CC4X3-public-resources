@@ -1,0 +1,79 @@
+#<AdxTL>@(#)9.0.0.0 $Revision$
+#########################################################################
+#
+# QLFWSADD: TRAITEMENT DE QUALIFICATION DES WEB SERVICES
+#
+# Ce traitement contient le sous programme ADDDECIMAL publié sous forme
+# de WebService sous l'identifiant QLFWSADD 
+# 
+# Le sous programme ADDDECIMAL attend trois paramètre décimaux pour
+# retourner la somme des deux premier dans le troisième.
+#
+# Pour retourner des messages en sus du résultat, ce sous programme 
+# utilise les sous programmes "MESSAGE", "AVERTIR"et "ERREUR" du 
+# traitement GESECRAN 
+#
+# Web service publié:
+#
+# QLFWSADD:ADDDECIMAL ==> webservice:  QLFWSADD => wrapper: WRQLFWSADD
+#
+#########################################################################
+
+Local Decimal A
+Local Decimal B
+Local Decimal WRD
+# valorisation des variables avant l'appel
+Gosub INITWS 
+
+Call ADDDECIMAL( A,B,WRD )
+
+End
+
+#-----------------------------------------------------------------------
+# Sous programme appelable via le serveur de Web Service
+#-----------------------------------------------------------------------
+Subprog ADDDECIMAL(A,B,R)
+  Value Decimal A
+  Value Decimal B
+  Variable Decimal R
+
+  Local Integer BTN_WARN
+
+  Call MESSAGE("Info: exec ADDDECIMAL From QLFWSADD") From GESECRAN
+  Call AVERTIR("Warning: Param A=["+num$(A)+"]",BTN_WARN) From GESECRAN
+  Call AVERTIR("Warning: Param B=["+num$(B)+"]",BTN_WARN) From GESECRAN
+  
+  R=A+B
+
+  If R>1000
+    Call ERREUR("Erreur: Résultat R=["+num$(R)+"] > 1000") From GESECRAN
+  Endif
+End
+
+
+
+#-----------------------------------------------------------------------
+# etiquette "INITWS"
+# Chargement des variables de l'appel du spgm publié par le traitement de
+# test gérnéré dans le traitement du sous-programme wrapper : WRQLFWSADDEC
+#-----------------------------------------------------------------------
+$INITWS
+A=2.112
+B=997.887
+Return
+
+
+#-----------------------------------------------------------------------
+# etiquette "RESULTWS"
+# Vialusalisation des variables de test gérnéré dans le traitement
+# du sous-programme wrapper : WRQLFWSADDEC
+#-----------------------------------------------------------------------
+$RESULTWS
+ Call ECR_TRACE("A "+num$(A),0) From GESECRAN
+ Call ECR_TRACE("B "+num$(B),0) From GESECRAN
+ Call ECR_TRACE("R "+num$(R),0) From GESECRAN
+Return
+
+
+
+
