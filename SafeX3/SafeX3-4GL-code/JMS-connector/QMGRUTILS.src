@@ -1,0 +1,233 @@
+#<AdxTL>@(#)6.0.0.0 $Revision$
+#########################################################################
+#
+# QMGRUTILS : TRAITEMENTS UTILITAIRES POUR LE CONNECTEUR JMS 
+#             APPELS DU BUNDLE EXTENDS JMS JCLIENT
+# 
+# This 4GL treatment contains calls to some classes of the package "com.isandlatech.x3.connector.jms.jclient"
+# published by the bundle "com.isandlatech.x3.connector.jms.jclient"
+#
+# F5 : To launch and trace the test
+#
+# 2010/11/15 - OG - modify the "abreviation" JAVSRV => JSRV
+# 2011/02/25 - OG - modify the SENDMESS subprog to built the jms message with an instance of CXmlDocument.
+# 2014/11/04 - OG - use new QLFCIUUTILS.CIUFNDJAVASRV function to retreive the information of a predefine javaserver
+#                   adapt the JMSCLIINIT function to accept a QUEUEMANAGER name
+#
+# Copyright 2014 isandlaTech - o Gattaz
+#
+#########################################################################
+
+
+#-----------
+# End of the MAIN routine of this TRT
+End
+
+#-----------------------------------------------------------------------
+# Subprogram to create and configure a JMS client
+#-----------------------------------------------------------------------
+Funprog JMSCLIINIT (AQUEUEMANAGER,AQUEUENAME,AERRMESS)
+Value    Char     AQUEUEMANAGER()
+Value    Char     AQUEUENAME ()
+Variable Char     AERRMESS()
+
+    Local Char KQLFNAME (250)
+    KQLFNAME ="JMSCLIINIT"
+    Local Char KCLASSJMSCF (250)
+    KCLASSJMSCF = "com.isandlatech.x3.connector.jms.jclient.CJmsClientFactory"
+    Local Char WREFCLI(30)
+    WREFCLI=""
+
+    Onerrgo ERRINIT
+
+    #logWriteTitle("Create JMS Client")
+    #var wJmsCliInstance = callui(KTARGETNEWCLI);
+    Call CIUTRACELINE([L]KQLFNAME,"Instanciate a JMS Client to be connected to : "+AQUEUEMANAGER ) From QLFCIUUTILS
+    WREFCLI=  FUNCIU = KCLASSJMSCF+":newJmsClient" Using [JSRV] With ( AQUEUEMANAGER ) 
+
+    If(WREFCLI<>"")
+    #logWriteTitle("Dump the new client");
+    #logWrite(callui(wJmsCliInstance+":toString") );
+        Call CIUTRACELINE(KQLFNAME,"Dump the new client") From QLFCIUUTILS
+        Call CIUTRACELINE(KQLFNAME,  FUNCIU = WREFCLI+":toDescription" Using [JSRV] With ( ) ) From QLFCIUUTILS
+    Endif
+    If(WREFCLI<>"")
+    #logWriteTitle("Open Session using the parameters defined in the configuration file of the bundle");
+    #logWrite(callui(wJmsCliInstance+":openJmsSession") );
+        Call CIUTRACELINE([L]KQLFNAME,"Open Session") From QLFCIUUTILS
+        CALLIU = WREFCLI+":openJmsSession" With  Using [JSRV] 
+    Endif
+    If(WREFCLI<>"")
+    #logWriteTitle("Open queue");
+    #callui(wJmsCliInstance+":openJmsQueue", "/queue/ExampleQueue");
+        Call CIUTRACELINE([L]KQLFNAME,"Open queue [" + AQUEUENAME + "]" ) From QLFCIUUTILS
+        CALLIU = WREFCLI+":openJmsQueue"  With  AQUEUENAME Using [JSRV]
+    Endif
+    If(WREFCLI<>"")
+    #logWriteTitle("Test if the new client is ready");
+        #logWrite("Ready="+callui(wJmsCliInstance+":isReady") );
+        Call CIUTRACELINE([L]KQLFNAME,"Test if the new client is ready") From QLFCIUUTILS
+        Local Integer WREADY
+        WREADY = FUNCIU = WREFCLI+":isReady" Using [JSRV] With ( )
+        Call CIUTRACELINE([L]KQLFNAME, "isReady=[" + num$(WREADY) + "]" ) From QLFCIUUTILS
+    Endif
+    Goto ENDINIT
+
+    $ERRINIT
+    AERRMESS = "CAN'T OPEN QUEUE: Error("+num$(errn)+") : ["+errm+"] ["+errp+"] line ["+num$(errl)+"]"
+    WREFCLI="":# raz to exit
+    Resume:# The error bloc MUST be closed by "Resume"
+
+    $ENDINIT
+End  WREFCLI  :# end of the subprogram JMSCLIINIT 
+
+
+#-----------------------------------------------------------------------
+# Subprogram to send a JMS Text Message
+#-----------------------------------------------------------------------
+Subprog SENDMESS(AREFCLI ,APROPERTIES,ATYPES,AVALUES,ATEXT,AERRMESS)
+Value    Char     AREFCLI ()
+Value    Char     APROPERTIES()(1..)
+Value    Char     ATYPES()(1..)
+Value    Char     AVALUES()(1..)
+Value    Clbfile  ATEXT()
+Variable Char     AERRMESS()
+
+    Local Char KQLFNAME (250)
+    KQLFNAME ="SENDMESS" 
+    Local Char WREFMESS(30)
+    WREFMESS =""
+
+    Onerrgo ERRSEND
+
+
+
+# creates the JMS Text message with a String data"
+#var wMessage  = callui(wJmsCliInstance+":newTextMessage",getText(wI)) ;
+    Call CIUTRACELINE([L]KQLFNAME,"Ask the JMS client [" + AREFCLI  + "] to instanciate a JMS Text message with a String data") From QLFCIUUTILS
+    Local Char WREFMESS(30)
+    WREFMESS =  FUNCIU = AREFCLI +":newTextMessage" Using [JSRV] With (ATEXT,"text/plain") 
+
+
+    If (WREFMESS <>"")
+
+    Call CIUTRACELINE([L]KQLFNAME,"The CTextMessage is instanciated => Ref=[" + WREFMESS + "]") From QLFCIUUTILS
+
+
+#logWrite("set PropStr = "+"MessageIdx="+wI);
+#callui(wMessage+":setStringProperty","PropStr","MessageIdx="+wI);
+
+#var wTime = getTime();
+#logWrite("set PropStrTime = "+wTime);
+#callui(wMessage+":setStringProperty","PropStrTime",wTime);
+
+#var wDate = getDate();
+#logWrite("set PropStrDate = "+wDate);
+#callui(wMessage+":setStringProperty","PropStrDate",wDate);
+
+#logWrite("set PropInt = "+wI);
+#callui(wMessage+":setIntProperty","PropInt",(""+wI) );
+    
+#logWrite("set PropFloat = "+(wI+100/5.23));
+#callui(wMessage+":setFloatProperty","PropFloat",( "" + (wI+100/5.23)) );
+
+#logWrite("set ProBool = "+false);
+#callui(wMessage+":setBooleanProperty","ProBool",java.lang.String.valueOf(false) );
+
+#logWrite("set ProBool2 = "+ "true" );
+#callui(wMessage+":setBooleanProperty","ProBool2","true");
+
+    Local Char     WPROPERTY(30)
+    Local Char     WMETHOD (30)
+    Local Char     WVALUES(250)
+    Local Integer WI
+    Local Integer WMAX
+    WMAX = dim(APROPERTIES)
+    For WI= 1 To WMAX 
+        WPROPERTY= APROPERTIES(WI)
+        WMETHOD = "set"+ATYPES(WI)+"Property"
+        WVALUE = AVALUES(WI)
+
+        Call CIUTRACELINE([L]KQLFNAME,"Set the property [" + num$(WI)+ "] :" + WMETHOD + "(" + WPROPERTY+ "," + WVALUE + ")") From QLFCIUUTILS
+        CALLIU = WREFMESS +":"+WMETHOD With WPROPERTY,WVALUE  Using [JSRV]
+
+    Next WI
+
+    Endif
+    If (WREFMESS <>"")
+# dump of the message
+#logWrite(callui(wMessage+":toDescription"));
+        Call CIUTRACELINE([L]KQLFNAME,"Dump the message") From QLFCIUUTILS
+        Call CIUTRACELINE([L]KQLFNAME,  FUNCIU = WREFMESS +":toDescription" Using [JSRV] With ( ) ) From QLFCIUUTILS
+    Endif
+    If (WREFMESS <>"")
+# send of the message
+# callui(wJmsCliInstance+":sendMessage", wMessage);
+        Call CIUTRACELINE([L]KQLFNAME,"Send the message") From QLFCIUUTILS
+        CALLIU = AREFCLI +":sendMessage" With WREFMESS Using [JSRV]
+    Endif
+
+    Goto ENDSEND
+
+    $ERRSEND
+    AERRMESS = "Error("+num$(errn)+") : ["+errm+"] ["+errp+"] line ["+num$(errl)+"]"
+    WREFMESS ="":# raz to exit
+    Resume:# The error bloc MUST be closed by "Resume"
+
+    $ENDSEND
+
+End :# end of the subprogram SENDMESS
+
+#-----------------------------------------------------------------------
+# Function to close and destroy a JMS client
+# return an empty reference
+#-----------------------------------------------------------------------
+Funprog JMSCLICLOSE (AREFCLI ,AERRMESS)
+Value    Char     AREFCLI ()
+Variable Char     AERRMESS()
+
+    Local Char KQLFNAME (250)
+    KQLFNAME ="JMSCLICLOSE " 
+
+    Onerrgo ERRCLOSE
+
+    If (AREFCLI <>"")
+#logWriteTitle("Close queue");
+#logWrite(callui(wJmsCliInstance+":closeJmsQueue") );
+        Call CIUTRACELINE([L]KQLFNAME,"Close queue") From QLFCIUUTILS
+        CALLIU = AREFCLI +":closeJmsQueue" With Using [JSRV]
+    Endif
+    If (AREFCLI <>"")
+#logWriteTitle("Close Session");
+#logWrite(callui(wJmsCliInstance+":closeJmsSession") );
+        Call CIUTRACELINE([L]KQLFNAME,"Close Session") From QLFCIUUTILS
+        CALLIU = AREFCLI +":closeJmsSession" With Using [JSRV]
+    Endif
+    If (AREFCLI <>"")
+#Destroy the instance of JmsClient
+#var wCleared = callui(KTARGETCLEARINST,wJmsCliInstance);
+#logWriteDescr("wJmsCliInstance Cleared", wCleared);
+    Call CIUTRACELINE([L]KQLFNAME,"Destroy the instance of JmsClient") From QLFCIUUTILS
+    Local Integer WDESTROYED
+    WDESTROYED = FUNCIU = [V]KTARGETCLINST Using [JSRV] With (AREFCLI)
+    Call CIUTRACELINE([L]KQLFNAME,"instance destroyed=[" + num$(WDESTROYED) + "]") From QLFCIUUTILS
+    Endif
+
+    Goto ENDCLOSE
+
+    $ERRCLOSE
+    AERRMESS = "CAN'T CLOSE JMS CLIENT: Error("+num$(errn)+") : ["+errm+"] ["+errp+"] line ["+num$(errl)+"]"
+    AREFCLI ="":# raz to exit
+    Resume:# The error bloc MUST be closed by "Resume"
+
+
+    $ENDCLOSE
+    AREFCLI =""
+
+End  AREFCLI :# end of the subprogram JMSCLICLOSE
+
+
+
+
+
+

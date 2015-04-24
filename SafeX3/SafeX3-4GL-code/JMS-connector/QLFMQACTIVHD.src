@@ -1,0 +1,133 @@
+#<AdxTL>@(#)3.0.0.0 $Revision$
+###########################################################
+#
+#
+# QLFMQACTIVHD : TRAITEMENTS DE QUALIFICATION DU HANDLER DE 
+#                MESSAGES JMS RECU PAR APACHE ACTIV MQ
+#                APPELS DEPUIS LE BUNDLE EXTENDS JMS JLISTENER
+#
+# F5 : To launch and trace the test
+#
+# 2010/12/24 - OG - creation of this TRT
+#
+# Copyrigth 2014 isandlaTech - o Gattaz
+#
+###########################################################
+
+Local Integer WSTEPON 
+# si WSTEPON = 1 => Infbox + trace avant chaque appel
+WSTEPON = 0
+Local Char KQLFNAME (250)
+KQLFNAME = "QLFMQACTIVHD"
+
+Call CIUTRACEOPEN(KQLFNAME) From QLFCIUUTILS
+
+# ------------------------- test: init simulation data
+Call CIUTRACESTEP(WSTEPON,KQLFNAME,"Initialize the data for simulation") From QLFCIUUTILS
+
+Local Integer     WSTATUS
+Local Clbfile WREASON(5)
+Local Char WQUEUEMANAGER(30)
+Local Char WFROMQUEUENAME(30)
+Local Clbfile WTEXT(5)
+Local Char WPROPSIDS(30)(1..5)
+Local Char WPROPSVALUES(250)(1..5)
+Call INITDATA (WSTATUS,WREASON,WQUEUEMANAGER,WFROMQUEUENAME,WTEXT,WPROPSIDS,WPROPSVALUES)
+
+Local Char WSTR(250)
+WSTR= "Queue[" + WQUEUEMANAGER + "/" + WFROMQUEUENAME + "]"
+Call CIUTRACESTEP(WSTEPON,KQLFNAME,"initialized value: "+WSTR)From QLFCIUUTILS
+
+# ------------------------- test: simulate the arrival of a message
+Call CIUTRACESTEP(WSTEPON,KQLFNAME,"Call JMSHANDLER  to simulate a call from the JMS listener") From QLFCIUUTILS
+Call JMSHANDLER (WSTATUS,WREASON,WQUEUEMANAGER,WFROMQUEUENAME,WTEXT,WPROPSIDS,WPROPSVALUES)
+
+
+# -------------------------
+# Shows the returned data
+Call CIUTRACESTEP(WSTEPON,KQLFNAME ,"Shows the returned data") From QLFCIUUTILS
+Call CIUTRACESTEP(WSTEPON,KQLFNAME,"Status="+num$(WSTATUS))From QLFCIUUTILS
+Call CIUTRACESTEP(WSTEPON,KQLFNAME,"Reason="+WREASON)From QLFCIUUTILS
+
+
+Call CIUTRACECLOSE() From QLFCIUUTILS
+
+# -------------------------
+# end of the MAIN routine of this TRT
+End
+
+# --------------------------------------------------
+# JMSHANDLER : The entry point of the messages 
+# --------------------------------------------------
+# ASTATUS
+# AREASON would be a simple text description of the ‘error status’ returned in ASTATUS.
+# AQUEUEMANAGER the queue manager name 
+# AFROMQUEUENAME the queue name 
+# ATEXT the content of the message
+# APROPSIDS the table of the IDs of the properties of the message
+# APROPSVALUES the table of the values of the properties of the message
+
+Subprog JMSHANDLER (ASTATUS,AREASON,AQUEUEMANAGER,AFROMQUEUENAME,ATEXT,APROPSIDS,APROPSVALUES)
+Variable Integer ASTATUS
+Variable Clbfile AREASON()
+Value Char AQUEUEMANAGER()
+Value Char AFROMQUEUENAME()
+Value Clbfile ATEXT()
+Value Char APROPSIDS()(1..)
+Value Char APROPSVALUES()(1..)
+
+
+Local Integer WOK
+# hypothesis
+WOK=1
+
+
+# ....
+
+Local Char WMESSINFOS (250)
+WMESSINFOS = "Queue=["+ AQUEUEMANAGER + "/" + AFROMQUEUENAME + "]"
+
+If (WOK = 1)
+ASTATUS = 1
+AREASON = "OK message processed : "+ WMESSINFOS 
+Else
+ASTATUS =0
+AREASON = "KO can't process the message : " + MESSINFOS
+Endif
+
+
+# add n properties lines format "Id=Value" after a line starting with the prefix "***"
+AREASON += chr$(10) + "***Returned values:"
+AREASON += chr$(10) + "PROP01=value01"
+AREASON += chr$(10) + "PROP02=value02"
+
+
+
+# end of JMSHANDLER 
+End
+
+
+
+#---------------------------------------------------
+# Prepare data for simulation
+#
+Subprog INITDATA  (ASTATUS,AREASON,AQUEUEMANAGER,AFROMQUEUENAME,ATEXT,APROPSIDS,APROPSVALUES)
+Variable Integer ASTATUS
+Variable Clbfile AREASON()
+Variable Char AQUEUEMANAGER()
+Variable Char AFROMQUEUENAME()
+Variable Clbfile ATEXT()
+Variable Char APROPSIDS()(1..)
+Variable Char APROPSVALUES()(1..)
+
+ASTATUS=-1
+AREASON="???"
+AQUEUEMANAGER="ACTIVEMQTEST"
+AFROMQUEUENAME="dynamicQueues/MYQUEUE"
+
+
+ATEXT ="dura lex sed lex"
+
+# end of initdata
+End
+

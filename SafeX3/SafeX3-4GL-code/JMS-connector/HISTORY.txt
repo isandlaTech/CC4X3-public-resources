@@ -1,0 +1,5 @@
+
+
+20150424-OG
+- create this file
+- share the set of programms delivered with the jms connector of iCT4SX3 v1.0.6

@@ -1,0 +1,33 @@
+#<AdxTL>@(#)6.0.0.0 $Revision$
+#########################################################################
+#
+# QLFMQIBMWS : TRAITEMENTS DE QUALIFICATION APPEL SERVER WEBSPHERE MQ
+#              APPELS DU BUNDLE EXTENDS JMS JCLIENT
+#
+# F5 : To launch and trace the test
+#
+# 2014/12/24 - OG - creation of this TRT
+#
+# Copyright 2014 isandlaTech - o Gattaz
+#
+#########################################################################
+
+
+# Call the subprogram TESTSENDMESS to post a message in a queue published by a MOM server instance
+#
+# the subprog waits for 4 parameters
+# - the criteria able to select one bridge among those defined in the solution
+# - the name of the target queue manager 
+#   look at the queue manager definitions in the config.ini file of the jms.jclient bundle
+# - the mane of the target queue 
+# - the message body in a clob
+
+Local Clbfile WCLOB(6) : # (1024*2^6) - 4 => 64 Ko
+
+WCLOB='"1";"E";"TST";"MM";"I200NS1V3880";"13";"20140718";"0917"'
+
+Call TESTSENDMESS("*frontends*","QMIAA3U","GGX.UTI.LINP6",WCLOB) From QLFMQ
+
+#-----------
+# End of the MAIN routine of this TRT
+End

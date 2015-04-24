@@ -1,0 +1,193 @@
+#<AdxTL>@(#)10.0.0.0 $Revision$
+#########################################################################
+#
+# QLFMQ     : TRAITEMENTS DE QUALIFICATION DU CONNECTEUR JMS 
+#             APPELLE LES FONCTIONS TECHNIQUES DU TRAITEMENT QMGUTILS
+# 
+# This 4GL treatment contains calls to some classes of the package "com.isandlatech.x3.connector.jms.jclient"
+# published by the bundle "com.isandlatech.x3.connector.jms.jclient"
+#
+# F5 : To launch nothing => voir les traitement QLFMQIBMWS ou QLFMQACTIV
+#
+# 2010/11/15 - OG - modify the "abreviation" JAVSRV => JSRV
+# 2011/02/25 - OG - modify the SENDMESS subprog to built the jms message with an instance of CXmlDocument.
+# 2014/11/04 - OG - use new QLFCIUUTILS.CIUFNDJAVASRV function to retreive the information of a predefine javaserver
+#                   adapt the JMSCLIINIT function to accept a QUEUEMANAGER name
+#
+# Copyright 2014 isandlaTech - o Gattaz
+#
+#########################################################################
+
+
+#-----------
+# End of the MAIN routine of this TRT
+End
+
+
+#-----------------------------------------------------------------------
+# Subprogram to test the QMGRUTILS subprograms and functions
+#
+# this subprog waits for 4 parameters
+# - the criteria able to select one bridge among those defined in the solution
+# - the name of the target queue manager 
+#   look at the queue manager definitions in the config.ini file of the jms.jclient bundle
+# - the mane of the target queue 
+# - the message body in a clob
+#
+# This subrog is a test case which produce a trace file
+#
+#-----------------------------------------------------------------------
+Subprog TESTSENDMESS (ABRIDGEFILTER,AQUEUEMANAGER,AQUEUENAME,ATEXT)
+Value    Char     ABRIDGEFILTER()
+Value    Char     AQUEUEMANAGER()
+Value    Char     AQUEUENAME()
+Value    Clbfile  ATEXT()
+
+# sets the  testing tool parameters (infbox or not, prefix of the lines of the trace )
+Local Integer WSTEPON
+# if WSTEPON = 1 => Infbox + trace
+# if WSTEPON = 0 => only trace
+WSTEPON = 0
+Local Char KQLFNAME (250)
+KQLFNAME ="QMGRUTILS" 
+
+Local Char WERRMESS (250)
+
+# -------------------------
+# ouverture de la trace
+Call CIUTRACEOPEN(KQLFNAME ) From QLFCIUUTILS
+
+# -------------------------
+# Initializes the constants (CIU...)
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel de l'initialisaton des constantes") From QLFCIUUTILS
+Call CIUINITKONST() From QLFCIUUTILS
+
+# -------------------------
+#ouverture du canal  vers le serveur java
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: Ouverture du canal vers le serveur java") From QLFCIUUTILS
+Local Char WHOST(128)
+Local Integer WPORT
+Local Integer  WHASSERVER
+Local Integer WOPEN
+Local Char GBRIDGEFILTER(250)
+WBRIDGEFILTER = "*x3frontends*"
+
+# -------------------------
+# récupération des parametres du java bridge suivant le filtre (critère de selection dans le paramètre ABRIDGEFILTER )
+WHASSERVER = func QLFCIUUTILS.CIUFNDJAVASRV(ABRIDGEFILTER ,WHOST,WPORT)
+Call CIUTRACELINE(KQLFNAME,"Y-a-t-il un serveur Bridge Java selectioné=["+num$(WHASSERVER)+"]"  )From QLFCIUUTILS
+
+# si pas de serveur => fin de la fonction de test 
+If WHASSERVER=0 : Goto FINTRT : Endif
+
+# ouverture du canal de communication avec le serveur BridgeJava
+WOPEN = func QLFCIUUTILS.CIUOPENADXD(WSTEPON,WHOST,WPORT)
+Call CIUTRACELINE(KQLFNAME,"Canal ouvert=["+num$(WOPEN )+"]"  )From QLFCIUUTILS
+
+# si le canal n'est pas ouvert => fin de la fonction de test 
+If WOPEN =0 : Goto FINTRT : Endif
+
+
+# -------------------------
+# ouverture 
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Call JMSCLIINIT to create and configure the jmsclient") From QLFCIUUTILS
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"manager="+AQUEUEMANAGER+" queue="+AQUEUENAME) From QLFCIUUTILS
+
+# call the subprogram JMSCLIINIT
+Local Char WREFCLI(30)
+WREFCLI = func QMGRUTILS.JMSCLIINIT (AQUEUEMANAGER,AQUEUENAME,WERRMESS)
+# si l'ouverture s'est mal passée
+If WERRMESS<>""
+    Call CIUTRACEERR([L]KQLFNAME,[L]WERRMESS ) From QLFCIUUTILS
+Endif
+
+If (WREFCLI<>"")
+
+# -------------------------
+# send a message with 3 properties
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Call SENDMESS subprogram to send a message in the opened Queue") From QLFCIUUTILS
+
+Onerrgo ERRSTEP2
+
+# préparation des trois propriétés associées au message
+Local    Char     WPROPERTIES(250)(1..3)
+Local    Char     WTYPES(250)(1..3)
+Local    Char     WVALUES(250)(1..3)
+WPROPERTIES(1) = "PropertyOne"
+WPROPERTIES(2) = "PropertyTwo"
+WPROPERTIES(3) = "PropertyThree"
+WTYPES(1) = "String" :# setStringProperty
+WTYPES(2) = "Int"    :# setIntProperty
+WTYPES(3) = "Float"  :# setFloatProperty
+WVALUES(1) = "value"
+WVALUES(2) = "1"
+WVALUES(3) = "1256.589"
+
+# Trace the data of the message body  
+Call CIUTRACEDUMP(KQLFNAME,"Message data",ATEXT) From QLFCIUUTILS
+
+
+Call SENDMESS(WREFCLI,WPROPERTIES,WTYPES,WVALUES,ATEXT,WERRMESS) From QMGRUTILS
+
+# si sendmess s'est mal passé
+If WERRMESS<>""
+    Call CIUTRACEERR([L]KQLFNAME,[L]WERRMESS ) From QLFCIUUTILS
+Endif
+Goto ENDSTEP2
+
+# traitements des erreurs x3 lors de l'envoi du message
+$ERRSTEP2
+    
+    WERRMESS = "Error("+num$(errn)+") : ["+errm+"] ["+errp+"]"
+    Call CIUTRACEERR([L]KQLFNAME,[L]WERRMESS ) From QLFCIUUTILS
+    Resume:# The error bloc MUST be closed by "Resume"
+
+$ENDSTEP2
+
+# -------------------------
+# Close and destroy the JMS client
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Call the JMSCLICLOSE function to close and destroy the JMS client") From QLFCIUUTILS
+
+WREFCLI = func QMGRUTILS.JMSCLICLOSE (WREFCLI,WERRMESS )
+# si la fermeture s'est mal passée
+If WERRMESS<>""
+    Call CIUTRACEERR([L]KQLFNAME,[L]WERRMESS ) From QLFCIUUTILS
+Endif
+
+# fin du bloc confitionné par la disponibilité d'un client JMS
+Endif
+
+$FINTEST
+
+#-----------
+# Destroy all the 'forgoten' instances 
+$CLEAR
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Destroy all the 'forgotten' instances") From QLFCIUUTILS
+Onerrgo CLEARERR
+Local Integer WNBINST
+WNBINST = FUNCIU = KTARGETCLEAR  Using [JSRV] With  ()
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Nb 'forgotten' instances destroyed = ["+num$(WNBINST )+"]") From QLFCIUUTILS
+Goto CLEAREND
+$CLEARERR
+Call CIUTRACEERR(KQLFNAME ,"Error during the destroy of the 'forgotten' instances") From QLFCIUUTILS
+Resume
+$CLEAREND
+
+#-----------
+# fermeture du canal "JSRV"
+$CLOSEJSRV
+Call CIUCLOSEJSRV(WSTEPON)From QLFCIUUTILS
+
+
+#-----------
+# closes and shows the trace
+$FINTRT 
+Call CIUTRACECLOSE()From QLFCIUUTILS
+Call LEC_TRACE From LECFIC    : #  Ouvre la fenetre de lecture de trace
+
+#-----------
+# End of the TESTSENDMESS subprog
+End 
+
+
+
