@@ -25,7 +25,7 @@
 # 2015/04/13 - TC - Adds the subprog CHECKDBGINFO to trace Exception thrown by a java method
 # 2015/01/14 - OG - Correction of the validation part of that program (f5). 
 #                   Retreive the first defined bridge in the solution.
-#
+# 2015/04/27 - TB - CIUTRACEDUMP -  Clob cut by 250 car. max. for each line in trace
 #########################################################################
 
 
@@ -434,8 +434,14 @@ Subprog CIUTRACEDUMP(ANAME,ATEXT,ACLOBTEXT)
     WI += 1
     WK = instr(1,ACLOBTEXT,chr$(10))
     If WK
-      WLINE = left$(ACLOBTEXT,WK-1)
-      ACLOBTEXT= right$(ACLOBTEXT,WK+1)
+        If WK>250 then
+            WK=250
+            WLINE=left$(ACLOBTEXT,WK-1)
+            ACLOBTEXT=right$(ACLOBTEXT,WK)
+        Else
+            WLINE = left$(ACLOBTEXT,WK-1)
+            ACLOBTEXT= right$(ACLOBTEXT,WK+1)
+      Endif
     Else
       WLINE = ACLOBTEXT
       ACLOBTEXT= ""
