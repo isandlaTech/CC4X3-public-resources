@@ -13,6 +13,7 @@
 # 2011/02/25 - OG - modify the SENDMESS subprog to built the jms message with an instance of CXmlDocument.
 # 2014/11/04 - OG - use new QLFCIUUTILS.CIUFNDJAVASRV function to retreive the information of a predefine javaserver
 #                   adapt the JMSCLIINIT function to accept a QUEUEMANAGER name
+# 2015/04/27 - TB - Adapt JMSCLIINIT Replace CALLIU fonction by FUNCIU fonction in 'openJmsSession'
 #
 # Copyright 2014 isandlaTech - o Gattaz
 #
@@ -30,6 +31,8 @@ Funprog JMSCLIINIT (AQUEUEMANAGER,AQUEUENAME,AERRMESS)
 Value    Char     AQUEUEMANAGER()
 Value    Char     AQUEUENAME ()
 Variable Char     AERRMESS()
+
+    local integer WTBREF  : # FUNCIU return value
 
     Local Char KQLFNAME (250)
     KQLFNAME ="JMSCLIINIT"
@@ -55,7 +58,10 @@ Variable Char     AERRMESS()
     #logWriteTitle("Open Session using the parameters defined in the configuration file of the bundle");
     #logWrite(callui(wJmsCliInstance+":openJmsSession") );
         Call CIUTRACELINE([L]KQLFNAME,"Open Session") From QLFCIUUTILS
-        CALLIU = WREFCLI+":openJmsSession" With  Using [JSRV] 
+        # CALLIU dont throw error, replace by FUNCIU 
+        #CALLIU = WREFCLI+":openJmsSession" With  Using [JSRV]
+        # 27/04/205 TB use FUNCIU instead CALLIU throw error 
+        WTBREF = FUNCIU = WREFCLI+":openJmsSession"  Using [JSRV]  With () 
     Endif
     If(WREFCLI<>"")
     #logWriteTitle("Open queue");
