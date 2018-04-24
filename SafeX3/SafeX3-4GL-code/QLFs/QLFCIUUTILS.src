@@ -1,11 +1,10 @@
-#<AdxTL>@(#)1.0.0.0 $Revision$
 
-#########################################################################
+##############################################################################################
 #
 # QLFCIUUTILS: TRAITEMENT DE QUALIFICATION DES CALLEXTERNES
 #
-# This program contains functions and sub-programs used by other "QLFCIUxxxx" programs. 
-# 
+# This program contains functions and sub-programs used by other "QLFCIUxxxx" programs.
+#
 # This program is maintained respecting the "ascendant compliance" rules.
 #
 # 2010/11/09 - OG - Rewrites the function Funprog CIUOPENADXD(ASTEPON,AHOST,APORT)
@@ -17,22 +16,29 @@
 #                   Uses the subprog  LISTBRIDGEJ () from INTRUTILA
 #                   Uses the function INTRUTILA.GETBRIDGEJ()
 #                   Improves comments
-# 2014/12/16 - OG - Improves managment of multiple bridges 
-#                   Adds the new function CIUFNDJAVASRV to retrieve brigde giving a part of 
+# 2014/12/16 - OG - Improves managment of multiple bridges
+#                   Adds the new function CIUFNDJAVASRV to retrieve brigde giving a part of
 #                   The hostname (eg. "*x3front*") or the index of the bridge in the list
-# 2015/01/13 - OG - Supress the 'normal' errors in the trace 
+# 2015/01/13 - OG - Supress the 'normal' errors in the trace
 #                   Select the first Java Bridge Server
 # 2015/04/13 - TC - Adds the subprog CHECKDBGINFO to trace Exception thrown by a java method
-# 2015/01/14 - OG - Correction of the validation part of that program (f5). 
+# 2015/01/14 - OG - Correction of the validation part of that program (f5).
 #                   Retreive the first defined bridge in the solution.
 # 2015/04/27 - TB - CIUTRACEDUMP -  Clob cut by 250 car. max. for each line in trace
-#########################################################################
+# 2018/04/20 - OG - Add the flag WFORCEDBRIDGE to be able to use a bridge not in the solution
+##############################################################################################
 
 
 # if WSTEPON = 1 => "Infbox" in each call to CIUTRACESTEP
 #                => Wait for the user at each step
-Local Integer WSTEPON 
+Local Integer WSTEPON
 WSTEPON = 0
+
+# if WFORCEDBRIDGE = 1 => force to use the bridge defined in the function CIUDEFJAVASRV
+#                      => Uses of the first bridge defined in the solution
+Local Integer WFORCEDBRIDGE
+WFORCEDBRIDGE = 1
+
 
 Local Char KQLFNAME (250)
 KQLFNAME = "QLFCIUUTILS"
@@ -40,6 +46,8 @@ Local Integer  WHASSERVER
 Local Char WHOST(128)
 Local Integer WPORT
 Local Integer WOPENED
+
+
 
 Call CIUTRACEOPEN(KQLFNAME)
 
@@ -62,22 +70,20 @@ Call CIUTRACELINE(KQLFNAME ,"Runtime version " + ver$(0) )
 #-----------
 Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Get the parameters of the JavaBridgeServer :")
 
-# Get the first JavaBridgeServer defined in the solution
-WHASSERVER = func CIUGETJAVASRV (WHOST,WPORT)
+If WFORCEDBRIDGE = 0
+  # Get the first JavaBridgeServer defined in the solution
+  WHASSERVER = func CIUGETJAVASRV (WHOST,WPORT)
 
-# Get the first JavaBridgeServer defined in the solution.xml file
-WHASSERVER = func CIUFNDJAVASRV("1",WHOST,WPORT)
+  # Get the first JavaBridgeServer defined in the solution.xml file
+  WHASSERVER = func CIUFNDJAVASRV("1",WHOST,WPORT)
+Endif
 
 #if no JavaBridgeServer defined in the solution
 If WHASSERVER =0
-    # defines a JavaBridgeServer 
+    # defines a JavaBridgeServer
     WHASSERVER= func CIUDEFJAVASRV(WHOST,WPORT)
-    Call CIUTRACELINE(KQLFNAME,"Is a JavaBridgeServer defined ? =["+num$(WHASSERVER)+"]"  )
+    Call CIUTRACELINE(KQLFNAME,"Is a JavaBridgeServer localy defined ? =["+num$(WHASSERVER)+"]"  )
 
-    WHASSERVER = func GETBRIDGEPARAMS(WHOST,WPORT)
-    If WHASSERVER=1
-      Call CIUTRACELINE(KQLFNAME,"The first linked JavaBridgeServer : ["+WHOST+"]:["+num$(WPORT )+"]"  )
-    Endif
     #if no JavaBridgeServer defined, calculates one.
     If WHASSERVER=0
       WHOST= adxmac(-1)
@@ -93,7 +99,7 @@ Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Open a channel :")
 WOPENED= func CIUOPENADXD(WSTEPON ,WHOST,WPORT)
 Call CIUTRACELINE(KQLFNAME,"Is the channel opened =["+num$(WOPENED)+"]"  )
 
-# Call 'CIUTRACEERR' to add red error lines in the trace 
+# Call 'CIUTRACEERR' to add red error lines in the trace
 # Call CIUTRACEERR(KQLFNAME ,"Test error trace. This is not an error.")
 
 Local Clbfile WDUMPTEST(5)
@@ -110,10 +116,10 @@ Call CIUTRACECLOSE()
 
 #-----------
 # End of the routine  (test part)
-End 
+End
 
 #-----------------------------------------------------------
-# Get the parameters of the first JavaBridgeServer defined 
+# Get the parameters of the first JavaBridgeServer defined
 # in the solution
 #-----------------------------------------------------------
 Funprog CIUGETJAVASRV (AHOST,APORT)
@@ -124,11 +130,12 @@ Funprog CIUGETJAVASRV (AHOST,APORT)
   WHASSERVER= 0
   Local Char WJAVASRVNAME(250)
   WJAVASRVNAME=""
+
   WHASSERVER = func CIUFNDJAVASRV (WJAVASRVNAME,AHOST,APORT)
 End WHASSERVER
 
 #-----------------------------------------------------------
-# Get the parameters of the first JavaBridgeServer defined 
+# Get the parameters of the first JavaBridgeServer defined
 # in the solution or the one which matches the given name
 #-----------------------------------------------------------
 Funprog CIUFNDJAVASRV (AJAVASRVNAME,AHOST,APORT)
@@ -145,20 +152,20 @@ Funprog CIUFNDJAVASRV (AJAVASRVNAME,AHOST,APORT)
 
   If WHASSERVER =1
     Local Integer WNBBRIDGE
-    
+
     WNBBRIDGE = func INTRUTILA.NBBRIDGEJ()
-    
+
     Call CIUTRACELINE("CIUGETJAVASRV","Number of JavaBridgeServer defined in the solution =["+num$(WNBBRIDGE )+"]"  )
-    
+
     Local Char WLSERV(80)(1..20)
     Local Integer WLPORT(1..20)
     Local Char WLVERS(80)(1..20)
     Call  LISTBRIDGEJ (WLSERV, WLPORT, WLVERS) From INTRUTILA
-    
-    For WI=1 To WNBBRIDGE 
+
+    For WI=1 To WNBBRIDGE
         Call CIUTRACELINE("CIUGETJAVASRV","Dump JavaBridgeServer("+num$(WI)+") =["+WLSERV(WI)+"]["+num$(WLPORT(WI))+"]["+WLVERS(WI)+"]"  )
     Next WI
-    
+
     Local Char WVERS(80)       : # version of the bridge (bug ???)
 
     If AJAVASRVNAME = ""
@@ -171,7 +178,7 @@ Funprog CIUFNDJAVASRV (AJAVASRVNAME,AHOST,APORT)
       WHASSERVER = func INTRUTILA.GETBRIDGEJ(WIDX,AHOST,APORT,WVERS)
     Else
       # Get the server which matches the given name
-      For WJ=1 To WNBBRIDGE 
+      For WJ=1 To WNBBRIDGE
         # pat(CH1, "*ADONIX*")
         If pat(WLSERV(WJ),AJAVASRVNAME)
           # Get the WJth bridge of the solution
@@ -191,28 +198,35 @@ Funprog CIUFNDJAVASRV (AJAVASRVNAME,AHOST,APORT)
 End WHASSERVER
 
 #-----------------------------------------------------------
-# define the JavaBridgeServer infos 
+# define the JavaBridgeServer infos
 # This function is called if no JavaBridgeServer defined in
-# the solution
+# the solution or if the flag WFORCEDBRIDGE ! 1
 #-----------------------------------------------------------
 Funprog CIUDEFJAVASRV(AHOST,APORT)
   Variable Char AHOST()
   Variable Integer APORT
 
-  Local Integer WHASHOST 
+  Local Integer WHASHOST
   WHASHOST = 0
+
+
+  If GUSER="ADMIN"
+    AHOST="10.130.1.112" :# macbookpro112 hosting bridge in dev
+    APORT= 27160
+    WHASHOST = 1
+  Endif
 
   If GUSER="ERPCS"
     AHOST="192.168.16.1" :# macbookpro82 hosting sageX3V6 (vmware VM)
     APORT= 17160
     WHASHOST = 1
   Endif
-    
+
   If WHASHOST = 1
     Call CIUTRACELINE("CIUDEFJAVASRV","The known JavaBridgeServer : ["+AHOST+"]:["+num$(APORT )+"]"  )
   Endif
 
-End WHASHOST 
+End WHASHOST
 
 
 #-----------------------------------------------------------
@@ -224,7 +238,7 @@ Subprog CIUCLEAR(ASTEPON)
   Local Char WQLFNAME(20)
   WQLFNAME = "CIUCLEAR"
 
-  Call CIUTRACESTEP(ASTEPON,WQLFNAME,"Frees all the java object instances.") 
+  Call CIUTRACESTEP(ASTEPON,WQLFNAME,"Frees all the java object instances.")
   If dim(GCANALJAVSRV)<=0
     Call CIUTRACELINE(WQLFNAME,"The channel 'JSRV' isn't opened.")
   Else
@@ -248,7 +262,7 @@ Subprog CIUCLOSEJSRV(ASTEPON)
   WQLFNAME = "CIUCLOSEJSRV"
 
 
-  Call CIUTRACESTEP(ASTEPON ,WQLFNAME  ,"Closing of the channel 'JSRV' ") 
+  Call CIUTRACESTEP(ASTEPON ,WQLFNAME  ,"Closing of the channel 'JSRV' ")
   If dim(GCANALJAVSRV)<=0
    Call CIUTRACELINE(WQLFNAME ,"The channel 'JSRV' isn't opened.")
   Else
@@ -269,7 +283,7 @@ Funprog CIUOPENADXD(ASTEPON,AHOST,APORT)
   Local Char WQLFNAME(20)
   [L]WQLFNAME = "CIUOPENADXD"
 
-  Local Integer WOPEN 
+  Local Integer WOPEN
   [L]WOPEN =-1 :# ni 0, ni 1 !!!
 
   Local Char WMESS (250)
@@ -278,32 +292,32 @@ Funprog CIUOPENADXD(ASTEPON,AHOST,APORT)
   WTARGET  = AHOST
   WTARGET += ":"
   WTARGET += num$(APORT)
-  
-  Call CIUTRACESTEP(ASTEPON ,WQLFNAME  ,"Open the channel 'JSRV' to : ["+[L]AHOST+"]["+num$([L]APORT)+"]" ) 
+
+  Call CIUTRACESTEP(ASTEPON ,WQLFNAME  ,"Open the channel 'JSRV' to : ["+[L]AHOST+"]["+num$([L]APORT)+"]" )
 
   If dim([V]GCANALJAVSRV)<=0
 
     Local Integer WEXISTS
     WEXISTS=1
-    # test if the host and port exist using the Opsock instruction 
+    # test if the host and port exist using the Opsock instruction
     If(ASTEPON>0)
       Call CIUTRACESTEP(ASTEPON,WQLFNAME,"Does the server ["+[L]AHOST+"]["+num$([L]APORT)+"] exist ?")
       WEXISTS = func BRIDGEXISTS(AHOST,APORT)
-      Call CIUTRACELINE([L]WQLFNAME ,"The server exists=["+num$([L]WEXISTS)+"]") 
+      Call CIUTRACELINE([L]WQLFNAME ,"The server exists=["+num$([L]WEXISTS)+"]")
     Endif
-  
+
     If WEXISTS=0
       Call CIUTRACELINE(WQLFNAME ,"The channel 'JSRV' can't be opend. server doesn't exist. KO.")
     Else
-      Call CIUTRACELINE([L]WQLFNAME ,"dossier =    ["+nomap +"]") 
-      Call CIUTRACELINE([L]WQLFNAME ,"utilisateur =["+adxusr+"]") 
-      Call CIUTRACELINE([L]WQLFNAME ,"mot de passe=["+password+"]") 
-      Call CIUTRACELINE([L]WQLFNAME ,"langue =     ["+[V]GLANGUE +"]") 
-   
+      Call CIUTRACELINE([L]WQLFNAME ,"dossier =    ["+nomap +"]")
+      Call CIUTRACELINE([L]WQLFNAME ,"utilisateur =["+adxusr+"]")
+      Call CIUTRACELINE([L]WQLFNAME ,"mot de passe=["+password+"]")
+      Call CIUTRACELINE([L]WQLFNAME ,"langue =     ["+[V]GLANGUE +"]")
+
       Call CIUTRACELINE([L]WQLFNAME ,"Trace before openning the channel 'JSRV'.")
 
       Onerrgo ERROPADXD
-      OPADXD [L]WTARGET With 7,nomap ,[V]GLANGUE ,adxusr ,password Using [JSRV]
+      Opadxd [L]WTARGET With 7,nomap ,[V]GLANGUE ,adxusr ,password Using [JSRV]
 
       # do something if there is no error : the WOPEN flag has always its initial value
       If [L]WOPEN=-1
@@ -327,7 +341,7 @@ Funprog CIUOPENADXD(ASTEPON,AHOST,APORT)
     Endif
 
   Endif
-    
+
 End [L]WOPEN
 
 
@@ -340,7 +354,7 @@ End [L]WOPEN
 Funprog BRIDGEXISTS(AHOST,APORT)
   Value Char AHOST()
   Value Integer APORT
-  Local Integer WOPEN 
+  Local Integer WOPEN
   [L]WOPEN =-1 :# ni 0, ni 1 !!!
 
   Onerrgo EXISTSERR
@@ -371,6 +385,10 @@ $EXISTSEND
 End [L]WOPEN
 
 
+#==============================================================================================================
+
+
+
 #-----------------------------------------------------------
 # Ouverture de la trace
 #-----------------------------------------------------------
@@ -381,7 +399,7 @@ Subprog CIUTRACEOPEN(ANAME)
   Call ECR_TRACE("----------------------------------------",0) From GESECRAN
   Call ECR_TRACE(ANAME+": DEBUT",0) From GESECRAN
   If dim(GCIUNUMSTEP )<=0
-    Global Integer GCIUNUMSTEP 
+    Global Integer GCIUNUMSTEP
   Endif
   Call  OUVRE_VLC("Traitement de qualification",ANAME,"") From GESECRAN
   GCIUNUMSTEP =0
@@ -419,7 +437,7 @@ End
 
 #-----------------------------------------------------------
 # Trace d'un dump
-# split du clob sur les clignes ( chr$(10) ) et split des 
+# split du clob sur les clignes ( chr$(10) ) et split des
 # lignes si > 80
 #-----------------------------------------------------------
 Subprog CIUTRACEDUMP(ANAME,ATEXT,ACLOBTEXT)
@@ -427,14 +445,14 @@ Subprog CIUTRACEDUMP(ANAME,ATEXT,ACLOBTEXT)
   Value Char ATEXT()
   Value Clbfile ACLOBTEXT()
   Call ECR_TRACE(ANAME+": "+ATEXT,0) From GESECRAN
-  # split du clob   => n appels  
+  # split du clob   => n appels
   Local Char WLINE(250)
   Local Integer  WI,WK
   While ACLOBTEXT<>""
     WI += 1
     WK = instr(1,ACLOBTEXT,chr$(10))
     If WK
-        If WK>250 then
+        If WK>250 Then
             WK=250
             WLINE=left$(ACLOBTEXT,WK-1)
             ACLOBTEXT=right$(ACLOBTEXT,WK)
@@ -470,21 +488,21 @@ Subprog CIUTRACEERR(ANAME,ATEXT)
   Value Char ANAME()
   Value Char ATEXT()
   Local Char WMESSERR(250)
-  WMESSERR= "errn=["+num$(errn)+"] errm=["+errm+"] errl=["+num$(errl)+"] errp=["+errp+"]"  
+  WMESSERR= "errn=["+num$(errn)+"] errm=["+errm+"] errl=["+num$(errl)+"] errp=["+errp+"]"
   Call ECR_TRACE(ANAME+": "+ ATEXT,1) From GESECRAN
   Call ECR_TRACE("        => "+WMESSERR,1) From GESECRAN
 End
 
 #-----------------------------------------------------------
-# 2015/04/13 - TC - 
+# 2015/04/13 - TC -
 # Affiche les erreurs remontées dans le debugInfo si DBGEXCEPT est valorisé
 #-----------------------------------------------------------
 Subprog CHECKDBGINFO()
-    If DBGEXCEPT <> 0
-        Call CIUTRACEDUMP("DBGLOG1","DBGLOG1", DBGLOG(1))
-        Call CIUTRACEDUMP("DBGLOG2","DBGLOG2", DBGLOG(2))
-        Call CIUTRACELINE("DBGDURATION1",num$(DBGDURATION(1)))
-        Call CIUTRACELINE("DBGDURATION2",num$(DBGDURATION(2)))
+    If dbgexcept <> 0
+        Call CIUTRACEDUMP("DBGLOG1","DBGLOG1", dbglog(1))
+        Call CIUTRACEDUMP("DBGLOG2","DBGLOG2", dbglog(2))
+        Call CIUTRACELINE("DBGDURATION1",num$(dbgduration(1)))
+        Call CIUTRACELINE("DBGDURATION2",num$(dbgduration(2)))
     Endif
 End
 
@@ -534,12 +552,8 @@ Subprog CIUINITKONST()
     Global Char KTARGETARRAYREADER (250)
     KTARGETARRAYREADER  = "com.sage.x3.runtime.bundle.deamon.CToolArrayReader:newReader"
 
-    
+
   Else
     Call CIUTRACELINE("INITCIUKONST","constantes deja initialisees")
   Endif
 End
-
-
-
-
