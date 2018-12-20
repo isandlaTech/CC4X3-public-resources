@@ -1,0 +1,250 @@
+#########################################################################
+#
+# QLFCALCULATOR : TRAITEMENT DE QUALIFICATION DES APPELS SOAP
+#
+# Ce traitement contient les appels "externes" permettant de solliciter le
+# plugin WebService SOAP du serveur bridge java
+#
+# le test conciste a appeler le WebService public "calculator"
+#
+# Voir le WSDL ici
+#   http://www.dneonline.com/calculator.asmx?WSDL
+#
+# Voir la documentation ici :
+#   http://www.dneonline.com/calculator.asmx
+#
+#
+# L'appel de ce WebService est réalisé en n étapes :
+#
+# - création d'un stub "calculator" avec le endPoint "http://www.dneonline.com/calculator.asmx?WSDL"
+# - création et valorisation d'un bean paramètre "CalculatorStub$Add"
+# - set valeur A et valeur B au bean Calculator "CalculatorStub$Add.setIntA et CalculatorStub$Add.setIntB"
+# - appel a la method Add et recuperation de la reponse AddResponse d'un bean paramètre "CalculatorStub.add(CalculatorStub$Add)"
+#########################################################################
+
+
+Local Integer WSTEPON
+# si WSTEPON = 1 => Infbox + une trace avant chaque appel
+# si WSTEPON = 0 => uniquement une trace avant chaque appel
+WSTEPON = 0
+
+
+# if WFORCEDBRIDGE = 1 => force to use the bridge defined in the function CIUDEFJAVASRV
+#                      => Uses of the first bridge defined in the solution
+Local Integer WFORCEDBRIDGE
+WFORCEDBRIDGE = 1
+
+Local Char KQLFNAME (250)
+# nom du traitemen => en préfixe de toutes les traces
+KQLFNAME = "QLFWSAWSESC"
+
+# ouverture de la trace
+Call CIUTRACEOPEN(KQLFNAME) From QLFCIUUTILS
+
+# Initialisatio des constantes CIU
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel de l'initialisaton des constantes") From QLFCIUUTILS
+Call CIUINITKONST() From QLFCIUUTILS
+
+
+#ouverture du canal  vers le serveur java
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: Ouverture du canal vers le serveur java") From QLFCIUUTILS
+Local Char WHOST(128)
+Local Integer WPORT
+Local Integer  WHASSERVER
+Local Integer WOPEN
+# récupération du serveur Bridge
+If WFORCEDBRIDGE = 0
+  WHASSERVER = func QLFCIUUTILS.CIUGETJAVASRV(WHOST,WPORT)
+Else
+  WHASSERVER = func QLFCIUUTILS.CIUDEFJAVASRV(WHOST,WPORT)
+Endif
+
+Call CIUTRACELINE(KQLFNAME,"Y-a-t-il un serveur Java=["+num$(WHASSERVER)+"]"  )From QLFCIUUTILS
+If WHASSERVER=0 : Goto FINTRT : Endif
+WOPEN = func QLFCIUUTILS.CIUOPENADXD(WSTEPON,WHOST,WPORT)
+Call CIUTRACELINE(KQLFNAME,"Canal ouvert=["+num$(WOPEN )+"]"  )From QLFCIUUTILS
+If WOPEN =0 : Goto FINTRT : Endif
+
+
+Calliu = KTARGETCLEAR  With  Using [JSRV]
+
+
+#-----------AWSECommerceServiceStub.class
+# // Création du stub
+# var wStubInstance = newStub(aStubName,aEndPoint);
+
+$NEWSTUB
+Local Char WSTUB(30)
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+KTARGETNEWSTUB ) From QLFCIUUTILS
+Local Char WMAIL (30)
+Onerrgo NEWSTUBERR
+# aStubName => AWSECommerceServiceStub.class
+WSTUB = Funciu = KTARGETNEWSTUB Using [JSRV] With ("Calculator","http://www.dneonline.com/calculator.asmx?WSDL" )
+Onerrgo
+Call CIUTRACELINE(KQLFNAME,"Référence du STUB =["+WSTUB +"]") From QLFCIUUTILS
+Goto NEWSTUBEND
+
+$NEWSTUBERR
+Call CIUTRACEERR(KQLFNAME ,"Erreur newStub")From QLFCIUUTILS
+Resume
+
+$NEWSTUBEND
+
+
+
+#-----------
+# Dump du stub
+# addLineTitle("Dump de l'instance de stub crée");
+# addLine(funcext(wStubInstance+":toString") );
+# addLine(funcext("com.sage.x3.runtime.bundle.webservices.CServiceStubsImpl:dumpStub",wStubInstance));
+
+$DUMPSTUB
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: " + KTARGETDUMPST )  From QLFCIUUTILS
+Local Clbfile WDUMPA(5)
+WDUMPA = Funciu = KTARGETDUMPST Using [JSRV] With (WSTUB)
+Call CIUTRACELINE(KQLFNAME,"Dump du stub:"+chr$(10)+WDUMPA) From QLFCIUUTILS
+
+
+
+#-----------
+# Création du bean paramètre de la méthode "Add"
+# return funcext(KTARGETNEWBEAN,wClassBeanName,wListBeanFields,aDay,aMonth,aYear);
+
+
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: " + KTARGETNEWBEAN )  From QLFCIUUTILS
+Local Char WCLASSNAME(250)
+# net.stub.calculator.CalculatorStub$Add
+WCLASSNAME = "net.stub.calculator.CalculatorStub$Add"
+Local Char WLISTFIELDS(250)
+WLISTFIELDS="AssociateTag,AWSAccessKeyId"
+Local Char WBEANA(30)
+WBEANA = Funciu = KTARGETNEWBEAN  Using [JSRV] With (WCLASSNAME)
+Call CIUTRACELINE(KQLFNAME,"référence du BEAN =["+WBEANA +"]") From QLFCIUUTILS
+
+
+
+#-----------
+# Dump du bean paramètre
+
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+WBEANA +":toString")  From QLFCIUUTILS
+Local Clbfile WDUMPB(5)
+WDUMPB= Funciu = WBEANA +":toString" Using [JSRV] With ()
+Call CIUTRACELINE(KQLFNAME,"Dump du bean Add:"+chr$(10)+WDUMPB) From QLFCIUUTILS
+
+
+#-----------
+# set int A ("Appel de l'action 'setIntA' du Web service et dump du bean résultat");
+# var wBeanResult = funcext(wBean+":setIntA");
+
+$GETMOR
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+WBEANA +":setIntA avec [1]")  From QLFCIUUTILS
+Local Char WBEANB(30)
+Local Integer WA
+WA = 1
+Onerrgo GETMORERR
+WBEANB = Funciu = WBEANA +":setIntA" Using [JSRV] With (WA)
+Onerrgo
+Call CIUTRACELINE(KQLFNAME,"setInt A 1") From QLFCIUUTILS
+Goto GETMOREND1
+
+$GETMORERR
+Call CIUTRACEERR(KQLFNAME ,"erreur méthode setIntA") From QLFCIUUTILS
+Resume
+
+$GETMOREND1
+#-----------
+# set int A ("Appel de l'action 'setIntB' du Web service et dump du bean résultat");
+# var wBeanResult = funcext(wBean+":setIntB");
+
+$GETMOR2
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+WBEANA +":setIntB avec [5]")  From QLFCIUUTILS
+Local Char WBEANB(30)
+Local Integer WB
+WB = 5
+Onerrgo GETMORERR2
+WBEANB = Funciu = WBEANA +":setIntB" Using [JSRV] With (WB)
+Onerrgo
+Call CIUTRACELINE(KQLFNAME,"setInt B 5") From QLFCIUUTILS
+Goto GETMOREND2
+$GETMORERR2
+Call CIUTRACEERR(KQLFNAME ,"erreur méthode setIntB") From QLFCIUUTILS
+Resume
+
+$GETMOREND2
+
+#-----------
+# call add on stub ("Appel de l'action 'add' du Web service et dump du bean résultat");
+# var wBeanResult = funcext(NEWSTUBEND+":add",WBEANA);
+
+$GETMOR3
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+WSTUB +":add ")  From QLFCIUUTILS
+Local Char WBEANB(30)
+Onerrgo GETMORERR3
+WADDRESP = Funciu = WSTUB +":add" Using [JSRV] With (WBEANA)
+Onerrgo
+Call CIUTRACELINE(KQLFNAME,"call add ") From QLFCIUUTILS
+Goto GETMOREND3
+$GETMORERR3
+Call CIUTRACELINE(KQLFNAME,"référence du BEANRESP =["+WADDRESP +"]") From QLFCIUUTILS
+Resume
+
+$GETMOREND3
+
+#-----------
+# call add on stub ("Appel de l'action 'add' du Web service et dump du bean résultat");
+# var wBeanResult = funcext(NEWSTUBEND+":add",WBEANA);
+
+$GETMOR4
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Appel: "+WADDRESP +":getAddResult ")  From QLFCIUUTILS
+Local Char WBEANB(30)
+Onerrgo GETMORERR4
+WADDRESULT = Funciu = WADDRESP +":getAddResult" Using [JSRV] With ()
+Onerrgo
+Call CIUTRACELINE(KQLFNAME,"getAddResult value=["+WADDRESULT+"]") From QLFCIUUTILS
+Goto GETMOREND4
+$GETMORERR4
+Call CIUTRACELINE(KQLFNAME,"référence du BEANRESP =["+WADDRESULT +"]") From QLFCIUUTILS
+Resume
+
+$GETMOREND4
+
+
+#-----------
+# libération des instances
+$CLEAR
+Call CIUTRACESTEP(WSTEPON ,KQLFNAME ,"Libération des instances") From QLFCIUUTILS
+Onerrgo CLEARERR
+Calliu = KTARGETCLEAR  With  Using [JSRV]
+Goto CLEAREND
+$CLEARERR
+Call CIUTRACEERR(KQLFNAME ,"erreur libération des instances") From QLFCIUUTILS
+Resume
+$CLEAREND
+
+#-----------
+# fermeture du canal "JAVSRV"
+$CLOSEJSRV
+Call CIUCLOSEJSRV(WSTEPON)From QLFCIUUTILS
+
+
+#-----------
+# fin du traitement de test
+$FINTRT
+Call CIUTRACECLOSE()From QLFCIUUTILS
+Call LEC_TRACE From LECFIC    : #  Ouvre la fenetre de lecture de trace
+End
+
+#-----------------------------------------------------------
+# lecture d'une variable XXX d'un bean
+# attend le nom de la méthode "getXXX"
+#-----------------------------------------------------------
+Subprog READBEANVAR(ASTEPON,ABEAN,AMETHOD)
+  Value Integer ASTEPON()
+  Value Char ABEAN()
+  Value Char AMETHOD()
+
+  Call CIUTRACESTEP(ASTEPON,"READBEANVAR" ,"Appel: "+ABEAN+":"+AMETHOD ) From QLFCIUUTILS
+  Local Char WVALUE(250)
+  WVALUE= Funciu = ABEAN+":"+AMETHOD Using [JSRV] With ()
+  Call ECR_TRACE("QLFCIUWSMO: "+AMETHOD+"=["+WVALUE+"]" ,0) From GESECRAN
+End
